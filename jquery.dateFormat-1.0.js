@@ -1,196 +1,124 @@
+//modifed by zoujian
+//from http://plugins.jquery.com/project/jquery-dateFormat
+//
 (function ($) {
-    $.format = (function () {
+    var zeropad = function (val, len) {
+        val = '' + val;
+        len = len || 2;
+        while (val.length < len) { val = "0" + val; }
+        return val;
+    };
+    var monthDict = {
+        "Jan": "01", "Feb": "02", "Mar": "03", "Apr": "04", "May": "05", "Jun": "06",
+        "Jul": "07", "Aug": "08", "Sep": "09", "Oct": "10", "Nov": "11", "Dec": "12"
+    };
+    var parseTime = function (value) {
+        var retValue = value;
+        if (retValue.indexOf(".") !== -1) {
+            retValue = retValue.substring(0, retValue.indexOf("."));
+        }
+        var values3 = retValue.split(":");
+        if (values3.length === 3) {
+            hour = values3[0];
+            minute = values3[1];
+            second = values3[2].split(' ')[0];
+            return {
+                time: retValue,
+                hour: hour,
+                minute: minute,
+                second: second
+            };
+        } else {
+            return {
+                time: "",
+                hour: "",
+                minute: "",
+                second: ""
+            };
+        }
+    };
 
-        var parseMonth = function (value) {
-                       
-            switch (value) {
-            case "Jan":
-                return "01";
-            case "Feb":
-                return "02";
-            case "Mar":
-                return "03";
-            case "Apr":
-                return "04";
-            case "May":
-                return "05";
-            case "Jun":
-                return "06";
-            case "Jul":
-                return "07";
-            case "Aug":
-                return "08";
-            case "Sep":
-                return "09";
-            case "Oct":
-                return "10";
-            case "Nov":
-                return "11";
-            case "Dec":
-                return "12";
-            default:
-                return value;
-            }
-        };
-        
-        var parseTime = function (value) {
-            var retValue = value;
-            if (retValue.indexOf(".") !== -1) {
-                retValue = retValue.substring(0, retValue.indexOf("."));
-            }
-            
-            var values3 = retValue.split(":");
-            
-            if (values3.length === 3) {
-                hour = values3[0];
-                minute = values3[1];
-                second = values3[2];
-                
-                return {
-                        time: retValue,
-                        hour: hour,
-                        minute: minute,
-                        second: second
-                    };
-            } else {
-                return {
-                    time: "",
-                    hour: "",
-                    minute: "",
-                    second: ""
-                };
-            }
-        };
-        
-        return {
+
+    if (!$.format)
+        $.format = {
             date: function (value, format) {
-                //value = new java.util.Date()
-                //2009-12-18 10:54:50.546
                 try {
+                    if (value == 'Invalid Date' || value == ' ' || value == '0001-1-1 0:00:00') return '';
+
                     var year = null;
                     var month = null;
                     var dayOfMonth = null;
+                    var ispm = false;
                     var time = null; //json, time, hour, minute, second
                     if (typeof value.getFullYear === "function") {
                         year = value.getFullYear();
                         month = value.getMonth() + 1;
                         dayOfMonth = value.getDate();
                         time = parseTime(value.toTimeString());
-                    } else if (value.search(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.?\d{0,3}\+\d{2}:\d{2}/) != -1) { // 2009-04-19T16:11:05+02:00
-                    	var values = value.split(/[T\+-]/);
-                    	
-                    	year = values[0];
-                    	month = values[1];
-                    	dayOfMonth = values[2];
-                    	time = parseTime(values[3].split(".")[0]);
                     } else {
                         var values = value.split(" ");
-                        
+
                         switch (values.length) {
-                        case 6://Wed Jan 13 10:43:41 CET 2010
-                            year = values[5];
-                            month = parseMonth(values[1]);
-                            dayOfMonth = values[2];
-                            time = parseTime(values[3]);
-                            break;
-                        case 2://2009-12-18 10:54:50.546
-                            var values2 = values[0].split("-");
-                            year = values2[0];
-                            month = values2[1];
-                            dayOfMonth = values2[2];
-                            time = parseTime(values[1]);
-                            break;
-                        default:
-                            return value;
+                            case 6: //Wed Jan 13 10:43:41 CET 2010
+                                year = values[5];
+                                month = monthDict[values[1]];
+                                dayOfMonth = values[2];
+                                time = parseTime(values[3]);
+                                break;
+                            case 2: //2009-12-18 10:54:50.546
+                                var values2 = values[0].split("-");
+                                year = values2[0];
+                                month = values2[1];
+                                dayOfMonth = values2[2];
+                                time = parseTime(values[1]);
+                                break;
+                            case 3: //8/17/2010 12:00:00 AM add by zj
+                                var values2 = values[0].split("/");
+                                year = values2[2];
+                                month = values2[0];
+                                dayOfMonth = values2[1];
+                                time = parseTime(values[1]);
+                                if (values[2] == 'PM')  //    time += 12;
+                                    ispm = true;
+                                break;
+                            default:
+                                return value;
                         }
                     }
-                    
-                    var pattern = "";
-                    var retValue = "";
-                    //Issue 1 - variable scope issue in format.date 
-					//Thanks jakemonO
-                    for (var i = 0; i < format.length; i++) {
-                        var currentPattern = format.charAt(i);
-                        pattern += currentPattern;
-                        switch (pattern) {
-                        case "dd":
-                            retValue += dayOfMonth;
-                            pattern = "";
-                            break;
-                        case "MM":
-                            retValue += month;
-                            pattern = "";
-                            break;
-                        case "yyyy":
-                            retValue += year;
-                            pattern = "";
-                            break;
-                        case "HH":
-                            retValue += time.hour;
-                            pattern = "";
-                            break;
-                        case "hh":
-                            retValue += (time.hour === 0 ? 12 : time.hour < 13 ? time.hour : time.hour - 12);
-                            pattern = "";
-                            break;
-                        case "mm":
-                            retValue += time.minute;
-                            pattern = "";
-                            break;
-                        case "ss":
-                            retValue += time.second;
-                            pattern = "";
-                            break;
-                        case "a":
-                            retValue += time.hour > 12 ? "PM" : "AM";
-                            pattern = "";
-                            break;
-                        case " ":
-                            retValue += currentPattern;
-                            pattern = "";
-                            break;
-                        case "/":
-                            retValue += currentPattern;
-                            pattern = "";
-                            break;
-                        case ":":
-                            retValue += currentPattern;
-                            pattern = "";
-                            break;
-                        default:
-                            if (pattern.length === 2 && pattern.indexOf("y") !== 0) {
-                                retValue += pattern.substring(0, 1);
-                                pattern = pattern.substring(1, 2);
-                            } else if ((pattern.length === 3 && pattern.indexOf("yyy") === -1)) {
-                                pattern = "";
-                            }
-                        }
+                    //modifed by zoujian
+                    var replaceDict = {
+                        'yyyy': function () { return year; },
+                        'yy': function () { return year.substr(2); },
+                        'MM': function () { return zeropad(month, 2); },
+                        'M': function () { return zeropad(month, 1); },
+                        'dd': function () { return zeropad(dayOfMonth, 2); },
+                        'd': function () { return zeropad(dayOfMonth, 1); },
+                        'HH': function () {
+                            if (ispm) { time.hour = parseInt(time.hour) + 12; }
+                            return zeropad(time.hour, 2);
+                        },
+                        'H': function () {
+                            if (ispm) { time.hour = parseInt(time.hour) + 12; }
+                            return time.hour;
+                        },
+                        'hh': function () { return zeropad(parseInt(time.hour) % 12, 2); },
+                        'h': function () { return parseInt(time.hour) % 12; },
+                        'mm': function () { return zeropad(time.minute, 2); },
+                        'm': function () { return time.minute; },
+                        "ss": function () { return zeropad(time.second, 2); },
+                        's': function () { return time.second; },
+                        'a': function () { return time.hour > 12 ? "PM" : "AM"; }
+                    };
+                    var retValue = format;
+                    for (var t in replaceDict) {
+                        if (retValue.indexOf(t) >= 0)
+                            retValue = retValue.replace(t, replaceDict[t]());
                     }
+
                     return retValue;
                 } catch (e) {
-                    console.log(e);
                     return value;
                 }
             }
         };
-    }());
-}(jQuery));
-
-
-$(document).ready(function () {
-    $(".shortDateFormat").each(function (idx, elem) {
-        if ($(elem).is(":input")) {
-            $(elem).val($.format.date($(elem).val(), 'dd/MM/yyyy'));
-        } else {
-            $(elem).text($.format.date($(elem).text(), 'dd/MM/yyyy'));
-        }
-    });
-    $(".longDateFormat").each(function (idx, elem) {
-        if ($(elem).is(":input")) {
-            $(elem).val($.format.date($(elem).val(), 'dd/MM/yyyy hh:mm:ss'));
-        } else {
-            $(elem).text($.format.date($(elem).text(), 'dd/MM/yyyy hh:mm:ss'));
-        }
-    });
-});
-
+} (jQuery));
